@@ -1,0 +1,13 @@
+# Build output
+/dist/
+/build/
+/out/
+
+# IDE / tooling
+.idea/
+.vscode/
+*.iml
+
+# OS cruft
+Thumbs.db
+.DS_Store

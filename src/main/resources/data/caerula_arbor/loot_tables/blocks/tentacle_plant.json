@@ -1,0 +1,40 @@
+{
+  "type": "minecraft:block",
+  "functions": [{ "function": "minecraft:explosion_decay" }],
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [{ "type": "minecraft:item", "name": "caerula_arbor:ocean_peduncle" }]
+    },
+    {
+      "rolls": 1,
+      "conditions": [{
+        "condition": "minecraft:block_state_property",
+        "block": "caerula_arbor:tentacle_plant",
+        "properties": { "age": "1" }
+      }],
+      "entries": [{ "type": "minecraft:item", "name": "caerula_arbor:ocean_peduncle" }]
+    },
+    {
+      "rolls": 1,
+      "conditions": [{
+        "condition": "minecraft:block_state_property",
+        "block": "caerula_arbor:tentacle_plant",
+        "properties": { "age": "2" }
+      }],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "caerula_arbor:ocean_peduncle",
+          "weight": 80,
+          "functions": [{
+            "function": "set_count",
+            "count": { "min": 1, "max": 2 }
+          }]
+        },
+        { "type": "minecraft:item", "name": "caerula_arbor:elite_peduncle", "weight": 20 }
+      ]
+    }
+  ],
+  "random_sequence": "caerula_arbor:blocks/tentacle_plant"
+}

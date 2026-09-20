@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "caerula_arbor:viviparous_lily",
+    "caerula_arbor:nethersea_potato",
+    "caerula_arbor:item_nethersea_wheat",
+    "caerula_arbor:ocean_peduncle",
+    "caerula_arbor:ocean_cell",
+    "caerula_arbor:broken_ocean_cell",
+    "caerula_arbor:fake_egg"
+  ]
+}

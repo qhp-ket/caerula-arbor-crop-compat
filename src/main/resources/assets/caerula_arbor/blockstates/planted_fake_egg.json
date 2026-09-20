@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "age=0": { "model": "caerula_arbor:block/planted_fake_egg" },
+    "age=1": { "model": "caerula_arbor:block/fake_egg_plant_blockstate_0" },
+    "age=2": { "model": "caerula_arbor:block/fake_egg_plant_blockstate_1" }
+  }
+}

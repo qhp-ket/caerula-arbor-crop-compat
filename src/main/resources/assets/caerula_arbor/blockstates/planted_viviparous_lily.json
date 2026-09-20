@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "age=0": {
+      "model": "caerula_arbor:block/planted_viviparous_lily"
+    },
+    "age=1": {
+      "model": "caerula_arbor:block/vivi_lily_plant_blockstate_0"
+    },
+    "age=2": {
+      "model": "caerula_arbor:block/vivi_lily_plant_blockstate_1"
+    }
+  }
+}

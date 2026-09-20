@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "age=0": {
+      "model": "caerula_arbor:block/nethersea_wheat"
+    },
+    "age=1": {
+      "model": "caerula_arbor:block/nethersea_wheat_plant_blockstate_0"
+    },
+    "age=2": {
+      "model": "caerula_arbor:block/nethersea_wheat_plant_blockstate_1"
+    }
+  }
+}
