@@ -1,7 +1,12 @@
 # Build output
+/.gradle/
 /dist/
 /build/
 /out/
+/.legacy-manual-build/
+/run/
+/run-*/
+/libs/*.jar
 
 # IDE / tooling
 .idea/

@@ -1,0 +1,66 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = "${mod_id}-forge-${minecraft_version}"
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+minecraft {
+    mappings channel: 'official', version: minecraft_version
+    copyIdeResources = true
+}
+
+def caerulaArtifact = "caerula_arbor-${caerula_arbor_version}.jar"
+if (!file("libs/${caerulaArtifact}").exists() && !file("../${caerulaArtifact}").exists()) {
+    throw new GradleException('Missing Caerula Arbor development JAR. Place caerula_arbor-*.jar in libs/.')
+}
+
+repositories {
+    // libs/ is the clone-friendly location; the parent mods/ directory is
+    // accepted only as a local development convenience.
+    flatDir { dirs 'libs', projectDir.parentFile }
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    // Development-only: ForgeGradle deobfuscates this external mod for compilation;
+    // it is deliberately not embedded in the compatibility JAR.
+    compileOnly fg.deobf("local.caerula:caerula_arbor:${caerula_arbor_version}")
+    runtimeOnly fg.deobf("local.caerula:caerula_arbor:${caerula_arbor_version}")
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/mods.toml') {
+        expand version: project.version
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    archiveFileName = "caerula_arbor_crop_compat-${mod_version}-forge-${minecraft_version}.jar"
+    manifest {
+        attributes(
+            'FMLModType': 'MOD',
+            'Specification-Title': mod_id,
+            'Specification-Vendor': 'qhp-ket',
+            'Specification-Version': '1',
+            'Implementation-Title': mod_id,
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'qhp-ket'
+        )
+    }
+    finalizedBy 'reobfJar'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
+}

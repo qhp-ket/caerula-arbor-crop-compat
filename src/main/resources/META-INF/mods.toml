@@ -4,10 +4,10 @@ license="GPL-3.0"
 
 [[mods]]
 modId="caerula_crop_compat"
-version="1.0.5"
+version="${version}"
 displayName="Caerula Arbor Crop Compatibility"
 authors="qhp-ket"
-description='''Improves compatibility of six Caerula Arbor crops with standard Minecraft crop automation by exposing the vanilla CropBlock and age contracts while preserving the original Caerula Arbor behavior.'''
+description='''Improves compatibility of six Caerula Arbor crops with standard Minecraft crop automation by exposing the vanilla CropBlock contract while preserving the native blockstate maturity property and original Caerula Arbor behavior.'''
 
 [[dependencies.caerula_crop_compat]]
 modId="forge"

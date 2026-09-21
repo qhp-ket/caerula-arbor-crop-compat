@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.pathfinder.PathComputationType;
 
 /**
@@ -33,72 +34,96 @@ import net.minecraft.world.level.pathfinder.PathComputationType;
 public class CaerulaCropBlock extends CropBlock {
     public CaerulaCropBlock(BlockBehaviour.Properties properties) {
         super(properties);
+        // Block constructs its StateDefinition before this superclass
+        // constructor returns, so invalid future schemas fail during registry
+        // initialization instead of during a later harvest attempt.
+        getAgeProperty();
     }
 
     @Override
-    protected IntegerProperty m_7959_() {
+    protected IntegerProperty getAgeProperty() {
         // Use the property actually registered by the transformed target class.
-        return (IntegerProperty) m_49965_().m_61081_("age");
+        Property<?> property = getStateDefinition().getProperty("blockstate");
+        if (!(property instanceof IntegerProperty ageProperty)) {
+            throw new IllegalStateException("Expected integer blockstate age property on " + this);
+        }
+        if (!ageProperty.getPossibleValues().contains(0)) {
+            throw new IllegalStateException("blockstate age property must contain 0 on " + this);
+        }
+        return ageProperty;
     }
 
     @Override
-    public int m_7419_() {
-        return 2;
+    public int getMaxAge() {
+        return getAgeProperty().getPossibleValues().stream()
+                .mapToInt(Integer::intValue)
+                .max()
+                .orElseThrow(() -> new IllegalStateException("blockstate age property has no values"));
+    }
+
+    /**
+     * Public, allocation-free access for the optional Harvest With Ease bridge.
+     * Normal callers should use the standard CropBlock API.
+     */
+    public final IntegerProperty getCompatibilityAgeProperty() {
+        return getAgeProperty();
     }
 
     @Override
-    protected void m_7926_(StateDefinition.Builder<Block, BlockState> builder) {
-        // The target class registers its renamed 0..2 property. Adding
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        // The target class registers its native blockstate property. Adding
         // CropBlock.AGE here would register an incompatible second property.
     }
 
     @Override
-    public void m_213898_(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+    public void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
         // Route CropBlock's random tick through the target class's growth tick.
-        m_213897_(state, level, pos, random);
+        tick(state, level, pos, random);
     }
 
     @Override
-    public boolean m_6724_(BlockState state) {
-        return f_60445_;
-    }
-
-    @Override
-    public boolean m_7898_(BlockState state, LevelReader level, BlockPos pos) {
+    public boolean isRandomlyTicking(BlockState state) {
+        // The original blocks are random-ticking throughout their lifecycle;
+        // their own tick method decides whether growth may proceed.
         return true;
     }
 
     @Override
-    public BlockState m_7417_(BlockState state, net.minecraft.core.Direction direction,
+    public boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
+        return true;
+    }
+
+    @Override
+    public BlockState updateShape(BlockState state, net.minecraft.core.Direction direction,
             BlockState neighborState, LevelAccessor level, BlockPos pos, BlockPos neighborPos) {
         return state;
     }
 
     @Override
-    public void m_7892_(BlockState state, Level level, BlockPos pos, Entity entity) {
+    public void entityInside(BlockState state, Level level, BlockPos pos, Entity entity) {
         // Preserve the original non-trampling behavior instead of CropBlock's
         // ravager collision handling.
     }
 
     @Override
-    protected boolean m_6266_(BlockState state, BlockGetter level, BlockPos pos) {
+    protected boolean mayPlaceOn(BlockState state, BlockGetter level, BlockPos pos) {
         return true;
     }
 
     @Override
-    public boolean m_7357_(BlockState state, BlockGetter level, BlockPos pos,
+    public boolean isPathfindable(BlockState state, BlockGetter level, BlockPos pos,
             PathComputationType type) {
         if (type == PathComputationType.WATER) {
-            return level.m_6425_(pos).m_205070_(FluidTags.f_13131_);
+            return level.getFluidState(pos).is(FluidTags.WATER);
         }
         if (type == PathComputationType.LAND || type == PathComputationType.AIR) {
-            return !state.m_60838_(level, pos);
+            return !state.isCollisionShapeFullBlock(level, pos);
         }
         return false;
     }
 
     @Override
-    protected ItemLike m_6404_() {
+    protected ItemLike getBaseSeedId() {
         if (PlantedViviparousLilyBlock.class.isInstance(this)) {
             return CaerulaArborModItems.PLANTED_VIVIPAROUS_LILY.get();
         }
@@ -117,6 +142,6 @@ public class CaerulaCropBlock extends CropBlock {
         if (PlantedFakeEggBlock.class.isInstance(this)) {
             return CaerulaArborModItems.FAKE_EGG.get();
         }
-        return super.m_6404_();
+        return super.getBaseSeedId();
     }
 }

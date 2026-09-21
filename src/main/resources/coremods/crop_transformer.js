@@ -1,21 +1,20 @@
 var Opcodes = Java.type('org.objectweb.asm.Opcodes');
+var ASMAPI = Java.type('net.minecraftforge.coremod.api.ASMAPI');
 
 var BLOCK = 'net/minecraft/world/level/block/Block';
 var BRIDGE = 'io/github/caerulacropcompat/CaerulaCropBlock';
 var CONSTRUCTOR_DESC = '(Lnet/minecraft/world/level/block/state/BlockBehaviour$Properties;)V';
-var INTEGER_PROPERTY = 'net/minecraft/world/level/block/state/properties/IntegerProperty';
-var INTEGER_PROPERTY_CREATE = 'm_61631_';
-var INTEGER_PROPERTY_CREATE_DESC =
-    '(Ljava/lang/String;II)Lnet/minecraft/world/level/block/state/properties/IntegerProperty;';
-var STATE_DEFINITION = 'net/minecraft/world/level/block/state/StateDefinition';
-var GET_PROPERTY = 'm_61081_';
-var GET_PROPERTY_DESC =
-    '(Ljava/lang/String;)Lnet/minecraft/world/level/block/state/properties/Property;';
-var OLD_AGE_NAME = 'blockstate';
-var NEW_AGE_NAME = 'age';
+var HWE_HARVEST_UTILS = 'it.crystalnest.harvest_with_ease.api.HarvestUtils';
+var HWE_GET_AGE_DESC =
+    '(Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/world/level/block/state/properties/IntegerProperty;';
+var BLOCK_STATE = 'net/minecraft/world/level/block/state/BlockState';
+var BLOCK_STATE_GET_BLOCK = 'm_60734_';
+var BLOCK_STATE_GET_BLOCK_DESC = '()Lnet/minecraft/world/level/block/Block;';
+var BRIDGE_AGE_HELPER = 'getCompatibilityAgeProperty';
+var BRIDGE_AGE_HELPER_DESC = '()Lnet/minecraft/world/level/block/state/properties/IntegerProperty;';
 
 function initializeCoreMod() {
-    return {
+    var transformers = {
         'planted_viviparous_lily_crop': transformCrop(
             'net.mcreator.caerulaarbor.block.PlantedViviparousLilyBlock'),
         'nethersea_potato_crop': transformCrop(
@@ -27,16 +26,12 @@ function initializeCoreMod() {
         'planted_cell_crop': transformCrop(
             'net.mcreator.caerulaarbor.block.PlantedCellBlock'),
         'planted_fake_egg_crop': transformCrop(
-            'net.mcreator.caerulaarbor.block.PlantedFakeEggBlock'),
-        'plant_growth_age': transformProcedure(
-            'net.mcreator.caerulaarbor.procedures.PlantGrowUpProcedure', 3),
-        'can_continue_growth_age': transformProcedure(
-            'net.mcreator.caerulaarbor.procedures.CanContinueToGrowProcedure', 1),
-        'bone_boost_growth_age': transformProcedure(
-            'net.mcreator.caerulaarbor.procedures.BoneBoostPlantProcedure', 2),
-        'harvest_fake_egg_age': transformProcedure(
-            'net.mcreator.caerulaarbor.procedures.HarvestFakeEggProcedure', 1)
+            'net.mcreator.caerulaarbor.block.PlantedFakeEggBlock')
     };
+    // Missing CLASS targets are never visited by ModLauncher. Always declaring
+    // this optional target avoids a too-early Java.type() availability check.
+    transformers['harvest_with_ease_caerula_age'] = transformHarvestWithEaseAge();
+    return transformers;
 }
 
 function transformCrop(className) {
@@ -51,20 +46,8 @@ function transformCrop(className) {
             }
 
             var constructorPatchedCount = 0;
-            var agePropertyRenamedCount = 0;
             for (var methodIndex = 0; methodIndex < node.methods.size(); methodIndex++) {
                 var method = node.methods.get(methodIndex);
-
-                if (method.name == '<clinit>') {
-                    for (var staticInstruction = method.instructions.getFirst();
-                            staticInstruction != null;
-                            staticInstruction = staticInstruction.getNext()) {
-                        if (isAgePropertyInitializer(staticInstruction)) {
-                            staticInstruction.cst = NEW_AGE_NAME;
-                            agePropertyRenamedCount++;
-                        }
-                    }
-                }
 
                 if (method.name != '<init>') {
                     continue;
@@ -86,92 +69,59 @@ function transformCrop(className) {
                 throw new Error('Expected exactly one Block constructor call in ' + className
                         + ', found ' + constructorPatchedCount);
             }
-            if (agePropertyRenamedCount != 1) {
-                throw new Error('Expected exactly one blockstate property initializer in ' + className
-                        + ', found ' + agePropertyRenamedCount);
-            }
             node.superName = BRIDGE;
             return node;
         }
     };
 }
 
-function transformProcedure(className, expectedCount) {
+function transformHarvestWithEaseAge() {
     return {
         'target': {
             'type': 'CLASS',
-            'name': className
+            'name': HWE_HARVEST_UTILS
         },
         'transformer': function(node) {
-            var agePropertyRenamedCount = 0;
+            var target = null;
+            var count = 0;
             for (var methodIndex = 0; methodIndex < node.methods.size(); methodIndex++) {
                 var method = node.methods.get(methodIndex);
-                if (method.name != 'execute') {
-                    continue;
-                }
-
-                for (var instruction = method.instructions.getFirst(); instruction != null;
-                        instruction = instruction.getNext()) {
-                    if (isAgePropertyLookup(instruction)) {
-                        instruction.cst = NEW_AGE_NAME;
-                        agePropertyRenamedCount++;
-                    }
+                if (method.name == 'getAge' && method.desc == HWE_GET_AGE_DESC) {
+                    target = method;
+                    count++;
                 }
             }
-
-            if (agePropertyRenamedCount != expectedCount) {
-                throw new Error('Expected ' + expectedCount + ' blockstate property lookups in '
-                        + className + '.execute, found ' + agePropertyRenamedCount);
+            if (count != 1) {
+                throw new Error('Unexpected Harvest With Ease getAge(BlockState) structure: found ' + count);
             }
+
+            var InsnList = Java.type('org.objectweb.asm.tree.InsnList');
+            var VarInsnNode = Java.type('org.objectweb.asm.tree.VarInsnNode');
+            var MethodInsnNode = Java.type('org.objectweb.asm.tree.MethodInsnNode');
+            var TypeInsnNode = Java.type('org.objectweb.asm.tree.TypeInsnNode');
+            var JumpInsnNode = Java.type('org.objectweb.asm.tree.JumpInsnNode');
+            var InsnNode = Java.type('org.objectweb.asm.tree.InsnNode');
+            var LabelNode = Java.type('org.objectweb.asm.tree.LabelNode');
+            var continueOriginal = new LabelNode();
+            var patch = new InsnList();
+
+            patch.add(new VarInsnNode(Opcodes.ALOAD, 0));
+            patch.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, BLOCK_STATE,
+                    BLOCK_STATE_GET_BLOCK, BLOCK_STATE_GET_BLOCK_DESC, false));
+            patch.add(new TypeInsnNode(Opcodes.INSTANCEOF, BRIDGE));
+            patch.add(new JumpInsnNode(Opcodes.IFEQ, continueOriginal));
+            patch.add(new VarInsnNode(Opcodes.ALOAD, 0));
+            patch.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, BLOCK_STATE,
+                    BLOCK_STATE_GET_BLOCK, BLOCK_STATE_GET_BLOCK_DESC, false));
+            patch.add(new TypeInsnNode(Opcodes.CHECKCAST, BRIDGE));
+            patch.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, BRIDGE,
+                    BRIDGE_AGE_HELPER, BRIDGE_AGE_HELPER_DESC, false));
+            patch.add(new InsnNode(Opcodes.ARETURN));
+            patch.add(continueOriginal);
+            target.instructions.insertBefore(target.instructions.getFirst(), patch);
+            ASMAPI.log('INFO', '[Caerula Crop Compat] Applied optional Harvest With Ease '
+                    + 'blockstate age-property patch to HarvestUtils#getAge(BlockState).');
             return node;
         }
     };
-}
-
-function isAgePropertyInitializer(instruction) {
-    if (instruction.getOpcode() != Opcodes.LDC
-            || instruction.cst == null
-            || String(instruction.cst) != OLD_AGE_NAME) {
-        return false;
-    }
-
-    var minValue = nextOpcodeInstruction(instruction);
-    var maxValue = nextOpcodeInstruction(minValue);
-    var createCall = nextOpcodeInstruction(maxValue);
-    return minValue != null
-        && maxValue != null
-        && createCall != null
-        && minValue.getOpcode() == Opcodes.ICONST_0
-        && maxValue.getOpcode() == Opcodes.ICONST_2
-        && createCall.getOpcode() == Opcodes.INVOKESTATIC
-        && createCall.owner == INTEGER_PROPERTY
-        && createCall.name == INTEGER_PROPERTY_CREATE
-        && createCall.desc == INTEGER_PROPERTY_CREATE_DESC;
-}
-
-function isAgePropertyLookup(instruction) {
-    if (instruction.getOpcode() != Opcodes.LDC
-            || instruction.cst == null
-            || String(instruction.cst) != OLD_AGE_NAME) {
-        return false;
-    }
-
-    var lookupCall = nextOpcodeInstruction(instruction);
-    return lookupCall != null
-        && lookupCall.getOpcode() == Opcodes.INVOKEVIRTUAL
-        && lookupCall.owner == STATE_DEFINITION
-        && lookupCall.name == GET_PROPERTY
-        && lookupCall.desc == GET_PROPERTY_DESC;
-}
-
-function nextOpcodeInstruction(instruction) {
-    if (instruction == null) {
-        return null;
-    }
-
-    var next = instruction.getNext();
-    while (next != null && next.getOpcode() < 0) {
-        next = next.getNext();
-    }
-    return next;
 }
