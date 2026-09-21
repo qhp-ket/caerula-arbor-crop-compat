@@ -229,10 +229,11 @@ public final class CropConfig {
             Files.createDirectories(blocks);
             Files.createDirectories(seeds);
             JsonObject blockTag = new JsonObject();
-            blockTag.addProperty("replace", true);
+            // Add configured entries without removing vanilla or other-mod entries.
+            blockTag.addProperty("replace", false);
             JsonArray blockValues = new JsonArray();
             JsonObject seedTag = new JsonObject();
-            seedTag.addProperty("replace", true);
+            seedTag.addProperty("replace", false);
             JsonArray seedValues = new JsonArray();
             for (CropConfigEntry entry : entries) {
                 if (!entry.enabled() || !validForTags(entry)) {

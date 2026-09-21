@@ -54,9 +54,29 @@ the current Caerula Arbor defaults. Each entry is self-contained:
 Append another object to `crops` to add an entry. `max_age: -1` derives the
 maximum from the property's possible values; a non-negative value must itself
 be one of those values. Invalid IDs, properties, and ranges are warned about
-and skipped. A configured block that is not a `CropBlock` is not transformed;
-its valid semantic and tag entry is retained with a warning, while
-CropBlock-based automation cannot be assumed to work.
+and skipped.
+
+An entry does not dynamically transform arbitrary classes. The six built-in
+Caerula Arbor classes are transformed by the coremod and use every configured
+field through the `CaerulaCropBlock` bridge. An additional block that is already
+a `CropBlock` can use `age_property` through the compatibility lookup and can
+participate in the generated tags, but this mod does not override that block's
+own `getMaxAge()` or seed method. A non-`CropBlock` is not transformed; its
+valid tag settings are retained with a warning, but it does not gain standard
+CropBlock automation merely by adding a JSON entry.
+
+The `enabled` flag controls this mod's configuration semantics and generated
+tags. Setting it to `false` does not undo the startup superclass transform for
+the six built-in Caerula Arbor classes or turn those classes back into ordinary
+`Block` classes.
+
+| Capability | Built-in Caerula bridge | Existing user `CropBlock` | User non-`CropBlock` |
+| --- | --- | --- | --- |
+| `age_property` / HWE lookup | Used by the bridge | Used by the compatibility lookup | Not used |
+| `max_age` | Used by `CaerulaCropBlock` | Does not override the block | Not used |
+| `seed` | Used by the bridge | Does not override the block | Not used |
+| `crop_tag` / `seed_tag` | Generated | Generated | Generated |
+| `enabled` | Disables config lookups and tags; does not undo the transform | Disables this entry's lookups and tags | Disables this entry's tags |
 
 The `minecraft:crops` and `forge:seeds` tags are supplied by a small generated
 server-data pack based on the enabled entries. The pack is regenerated on
