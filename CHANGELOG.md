@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.9
+
+- Make the optional Harvest With Ease compatibility transformer fail soft when
+  its `getAge(BlockState)` structure changes.
+- Require the patched HWE helper to remain static before using its parameter
+  slot; incompatible versions now log a warning and keep their original logic.
+
 ## 1.0.8
 
 - Always register the optional Harvest With Ease class target. Forge simply

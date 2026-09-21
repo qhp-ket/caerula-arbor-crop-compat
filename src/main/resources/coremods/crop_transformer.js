@@ -86,13 +86,16 @@ function transformHarvestWithEaseAge() {
             var count = 0;
             for (var methodIndex = 0; methodIndex < node.methods.size(); methodIndex++) {
                 var method = node.methods.get(methodIndex);
-                if (method.name == 'getAge' && method.desc == HWE_GET_AGE_DESC) {
+                var isStatic = (method.access & Opcodes.ACC_STATIC) != 0;
+                if (method.name == 'getAge' && method.desc == HWE_GET_AGE_DESC && isStatic) {
                     target = method;
                     count++;
                 }
             }
             if (count != 1) {
-                throw new Error('Unexpected Harvest With Ease getAge(BlockState) structure: found ' + count);
+                ASMAPI.log('WARN', '[Caerula Crop Compat] Harvest With Ease compatibility was not '
+                        + 'applied: expected exactly one static getAge(BlockState), found ' + count + '.');
+                return node;
             }
 
             var InsnList = Java.type('org.objectweb.asm.tree.InsnList');
