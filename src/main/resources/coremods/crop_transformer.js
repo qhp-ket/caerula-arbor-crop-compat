@@ -8,10 +8,10 @@ var HWE_HARVEST_UTILS = 'it.crystalnest.harvest_with_ease.api.HarvestUtils';
 var HWE_GET_AGE_DESC =
     '(Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/world/level/block/state/properties/IntegerProperty;';
 var BLOCK_STATE = 'net/minecraft/world/level/block/state/BlockState';
-var BLOCK_STATE_GET_BLOCK = 'm_60734_';
-var BLOCK_STATE_GET_BLOCK_DESC = '()Lnet/minecraft/world/level/block/Block;';
-var BRIDGE_AGE_HELPER = 'getCompatibilityAgeProperty';
-var BRIDGE_AGE_HELPER_DESC = '()Lnet/minecraft/world/level/block/state/properties/IntegerProperty;';
+var COMPAT = 'io/github/caerulacropcompat/CaerulaCropCompat';
+var COMPAT_AGE_HELPER = 'getConfiguredAgeProperty';
+var COMPAT_AGE_HELPER_DESC =
+    '(Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/world/level/block/state/properties/IntegerProperty;';
 
 function initializeCoreMod() {
     var transformers = {
@@ -101,7 +101,6 @@ function transformHarvestWithEaseAge() {
             var InsnList = Java.type('org.objectweb.asm.tree.InsnList');
             var VarInsnNode = Java.type('org.objectweb.asm.tree.VarInsnNode');
             var MethodInsnNode = Java.type('org.objectweb.asm.tree.MethodInsnNode');
-            var TypeInsnNode = Java.type('org.objectweb.asm.tree.TypeInsnNode');
             var JumpInsnNode = Java.type('org.objectweb.asm.tree.JumpInsnNode');
             var InsnNode = Java.type('org.objectweb.asm.tree.InsnNode');
             var LabelNode = Java.type('org.objectweb.asm.tree.LabelNode');
@@ -109,21 +108,19 @@ function transformHarvestWithEaseAge() {
             var patch = new InsnList();
 
             patch.add(new VarInsnNode(Opcodes.ALOAD, 0));
-            patch.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, BLOCK_STATE,
-                    BLOCK_STATE_GET_BLOCK, BLOCK_STATE_GET_BLOCK_DESC, false));
-            patch.add(new TypeInsnNode(Opcodes.INSTANCEOF, BRIDGE));
-            patch.add(new JumpInsnNode(Opcodes.IFEQ, continueOriginal));
-            patch.add(new VarInsnNode(Opcodes.ALOAD, 0));
-            patch.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, BLOCK_STATE,
-                    BLOCK_STATE_GET_BLOCK, BLOCK_STATE_GET_BLOCK_DESC, false));
-            patch.add(new TypeInsnNode(Opcodes.CHECKCAST, BRIDGE));
-            patch.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, BRIDGE,
-                    BRIDGE_AGE_HELPER, BRIDGE_AGE_HELPER_DESC, false));
+            patch.add(new MethodInsnNode(Opcodes.INVOKESTATIC, COMPAT,
+                    COMPAT_AGE_HELPER, COMPAT_AGE_HELPER_DESC, false));
+            // Keep one nullable copy for the fallback branch. IFNULL consumes
+            // only the duplicate; the original reference must be popped when
+            // the unpatched HWE implementation continues.
+            patch.add(new InsnNode(Opcodes.DUP));
+            patch.add(new JumpInsnNode(Opcodes.IFNULL, continueOriginal));
             patch.add(new InsnNode(Opcodes.ARETURN));
             patch.add(continueOriginal);
+            patch.add(new InsnNode(Opcodes.POP));
             target.instructions.insertBefore(target.instructions.getFirst(), patch);
             ASMAPI.log('INFO', '[Caerula Crop Compat] Applied optional Harvest With Ease '
-                    + 'blockstate age-property patch to HarvestUtils#getAge(BlockState).');
+                    + 'configured age-property patch to HarvestUtils#getAge(BlockState).');
             return node;
         }
     };

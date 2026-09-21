@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0
+
+- Move crop block, seed, age-property, maximum-age, tag, and enabled semantics
+  into editable per-crop entries in `config/caerula_crop_compat/crops.json`.
+- Generate the `minecraft:crops` and `forge:seeds` tags from enabled entries.
+- Keep the six Caerula Arbor defaults and the optional Harvest With Ease bridge
+  on the same configured age-property lookup.
+
 ## 1.0.9
 
 - Make the optional Harvest With Ease compatibility transformer fail soft when

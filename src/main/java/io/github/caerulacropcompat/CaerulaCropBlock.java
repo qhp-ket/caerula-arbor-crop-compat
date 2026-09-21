@@ -1,12 +1,5 @@
 package io.github.caerulacropcompat;
 
-import net.mcreator.caerulaarbor.block.NetherseaPotatoPlantBlock;
-import net.mcreator.caerulaarbor.block.NetherseaWheatBlock;
-import net.mcreator.caerulaarbor.block.PlantedCellBlock;
-import net.mcreator.caerulaarbor.block.PlantedFakeEggBlock;
-import net.mcreator.caerulaarbor.block.PlantedViviparousLilyBlock;
-import net.mcreator.caerulaarbor.block.TentaclePlantBlock;
-import net.mcreator.caerulaarbor.init.CaerulaArborModItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.FluidTags;
@@ -14,6 +7,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ItemLike;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
@@ -42,10 +36,27 @@ public class CaerulaCropBlock extends CropBlock {
 
     @Override
     protected IntegerProperty getAgeProperty() {
-        // Use the property actually registered by the transformed target class.
-        Property<?> property = getStateDefinition().getProperty("blockstate");
-        if (!(property instanceof IntegerProperty ageProperty)) {
-            throw new IllegalStateException("Expected integer blockstate age property on " + this);
+        CropConfig.CropConfigEntry entry = CropConfig.entryFor(this);
+        String propertyName = entry == null ? "blockstate" : entry.ageProperty();
+        Property<?> property = getStateDefinition().getProperty(propertyName);
+        IntegerProperty ageProperty;
+        if (property instanceof IntegerProperty configuredAgeProperty
+                && configuredAgeProperty.getPossibleValues().contains(0)) {
+            ageProperty = configuredAgeProperty;
+        } else {
+            if (entry != null) {
+                CropConfig.warn("runtime-age-" + entry.blockId(),
+                        "[Caerula Crop Compat] Configured age_property is unusable on " + entry.blockId()
+                                + "; falling back to native blockstate for the CropBlock bridge.");
+            }
+            // The CropBlock constructor runs before DeferredRegister assigns a
+            // registry key. The native blockstate fallback is only for that
+            // bootstrap window; normal runtime lookups use the config entry.
+            property = getStateDefinition().getProperty("blockstate");
+            if (!(property instanceof IntegerProperty fallback)) {
+                throw new IllegalStateException("Expected configured integer age property on " + this);
+            }
+            ageProperty = fallback;
         }
         if (!ageProperty.getPossibleValues().contains(0)) {
             throw new IllegalStateException("blockstate age property must contain 0 on " + this);
@@ -55,18 +66,7 @@ public class CaerulaCropBlock extends CropBlock {
 
     @Override
     public int getMaxAge() {
-        return getAgeProperty().getPossibleValues().stream()
-                .mapToInt(Integer::intValue)
-                .max()
-                .orElseThrow(() -> new IllegalStateException("blockstate age property has no values"));
-    }
-
-    /**
-     * Public, allocation-free access for the optional Harvest With Ease bridge.
-     * Normal callers should use the standard CropBlock API.
-     */
-    public final IntegerProperty getCompatibilityAgeProperty() {
-        return getAgeProperty();
+        return CropConfig.maxAgeFor(this, getAgeProperty());
     }
 
     @Override
@@ -124,24 +124,7 @@ public class CaerulaCropBlock extends CropBlock {
 
     @Override
     protected ItemLike getBaseSeedId() {
-        if (PlantedViviparousLilyBlock.class.isInstance(this)) {
-            return CaerulaArborModItems.PLANTED_VIVIPAROUS_LILY.get();
-        }
-        if (NetherseaPotatoPlantBlock.class.isInstance(this)) {
-            return CaerulaArborModItems.NETHERSEA_POTATO.get();
-        }
-        if (NetherseaWheatBlock.class.isInstance(this)) {
-            return CaerulaArborModItems.NETHERSEA_WHEAT.get();
-        }
-        if (TentaclePlantBlock.class.isInstance(this)) {
-            return CaerulaArborModItems.OCEAN_PEDUNCLE.get();
-        }
-        if (PlantedCellBlock.class.isInstance(this)) {
-            return CaerulaArborModItems.OCEAN_CELL.get();
-        }
-        if (PlantedFakeEggBlock.class.isInstance(this)) {
-            return CaerulaArborModItems.FAKE_EGG.get();
-        }
-        return super.getBaseSeedId();
+        Item seed = CropConfig.seedFor(this);
+        return seed != null ? seed : super.getBaseSeedId();
     }
 }

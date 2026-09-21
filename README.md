@@ -29,6 +29,40 @@ The add-on preserves Caerula Arbor's growth, bonemeal, drops, planting items,
 shapes, collision, lighting, pathfinding, and trampling behavior. It does not
 copy or override Caerula Arbor loot tables or blockstate/model JSON.
 
+## Crop entries
+
+Crop semantics are configured in the instance file
+`config/caerula_crop_compat/crops.json`. The first run creates six entries with
+the current Caerula Arbor defaults. Each entry is self-contained:
+
+```json
+{
+  "crops": [
+    {
+      "block": "caerula_arbor:planted_cell",
+      "seed": "caerula_arbor:ocean_cell",
+      "age_property": "blockstate",
+      "max_age": -1,
+      "crop_tag": true,
+      "seed_tag": true,
+      "enabled": true
+    }
+  ]
+}
+```
+
+Append another object to `crops` to add an entry. `max_age: -1` derives the
+maximum from the property's possible values; a non-negative value must itself
+be one of those values. Invalid IDs, properties, and ranges are warned about
+and skipped. A configured block that is not a `CropBlock` is not transformed;
+its valid semantic and tag entry is retained with a warning, while
+CropBlock-based automation cannot be assumed to work.
+
+The `minecraft:crops` and `forge:seeds` tags are supplied by a small generated
+server-data pack based on the enabled entries. The pack is regenerated on
+startup and is safe for Forge 1.20.1; edit the file and restart the instance
+to apply changes.
+
 ## Requirements
 
 - Minecraft 1.20.1
