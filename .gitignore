@@ -2,6 +2,7 @@
 /.gradle/
 /dist/
 /build/
+/bin/
 /out/
 /.legacy-manual-build/
 /run/
