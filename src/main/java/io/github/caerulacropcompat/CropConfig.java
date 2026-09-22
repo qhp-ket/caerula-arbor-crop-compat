@@ -213,7 +213,7 @@ public final class CropConfig {
         writeGeneratedPack();
         event.addRepositorySource(consumer -> {
             Pack pack = Pack.readMetaAndCreate("caerula_crop_compat_config",
-                    net.minecraft.network.chat.Component.literal("Caerula Crop Compat config"), false,
+                    net.minecraft.network.chat.Component.literal("Caerula Crop Compat config"), true,
                     name -> new PathPackResources(name, generatedPackDirectory, false),
                     PackType.SERVER_DATA, Pack.Position.TOP, PackSource.BUILT_IN);
             if (pack != null) {
