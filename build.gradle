@@ -20,7 +20,7 @@ minecraft {
 
 def caerulaArtifact = "caerula_arbor-${caerula_arbor_version}.jar"
 if (!file("libs/${caerulaArtifact}").exists() && !file("../${caerulaArtifact}").exists()) {
-    throw new GradleException('Missing Caerula Arbor development JAR. Place caerula_arbor-*.jar in libs/.')
+    throw new GradleException("Missing Caerula Arbor development JAR: ${caerulaArtifact}. Place it in libs/ or the parent mods/ directory.")
 }
 
 repositories {

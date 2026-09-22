@@ -176,19 +176,19 @@ public final class CropConfig {
                             + " is not a valid IntegerProperty containing 0 on " + entry.blockId());
             return null;
         }
-        if (entry.maxAge() >= 0 && !age.getPossibleValues().contains(entry.maxAge())) {
-            warnOnce("max-" + entry.blockId(),
-                    "[Caerula Crop Compat] Configured max_age " + entry.maxAge()
-                            + " is not valid for " + entry.blockId());
-            return null;
-        }
         return age;
     }
 
     public static int maxAgeFor(Block block, IntegerProperty property) {
         CropConfigEntry entry = entryFor(block);
-        if (entry != null && entry.maxAge() >= 0 && property.getPossibleValues().contains(entry.maxAge())) {
-            return entry.maxAge();
+        if (entry != null && entry.maxAge() >= 0) {
+            if (property.getPossibleValues().contains(entry.maxAge())) {
+                return entry.maxAge();
+            }
+            warnOnce("max-" + entry.blockId(),
+                    "[Caerula Crop Compat] Configured max_age " + entry.maxAge()
+                            + " is not valid for " + entry.blockId()
+                            + "; deriving the maximum from the age property.");
         }
         return property.getPossibleValues().stream().mapToInt(Integer::intValue).max()
                 .orElseThrow(() -> new IllegalStateException("Age property has no possible values on " + block));
@@ -345,8 +345,11 @@ public final class CropConfig {
         }
 
         private static String requiredString(JsonObject object, String name) {
-            if (!object.has(name) || !object.get(name).isJsonPrimitive()) {
+            if (!object.has(name)) {
                 throw new IllegalArgumentException(name + " is required");
+            }
+            if (!object.get(name).isJsonPrimitive() || !object.get(name).getAsJsonPrimitive().isString()) {
+                throw new IllegalArgumentException(name + " must be a string");
             }
             return object.get(name).getAsString();
         }
