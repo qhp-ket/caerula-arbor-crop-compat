@@ -150,7 +150,7 @@ public final class CropConfig {
     }
 
     private static ResourceLocation id(String value) {
-        return ResourceLocation.parse(value);
+        return new ResourceLocation(value);
     }
 
     public static CropConfigEntry entryFor(Block block) {
