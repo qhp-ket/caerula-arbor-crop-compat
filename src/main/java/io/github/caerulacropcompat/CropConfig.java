@@ -40,6 +40,19 @@ public final class CropConfig {
     private static final String CONFIG_FILE = "crops.json";
     private static final String PACK_DIRECTORY = "generated_data";
     private static final String DEFAULT_AGE_PROPERTY = "blockstate";
+    private static final List<CropConfigEntry> BUILTIN_DEFAULT_ENTRIES = List.of(
+            new CropConfigEntry(id("caerula_arbor:planted_viviparous_lily"),
+                    id("caerula_arbor:planted_viviparous_lily"), DEFAULT_AGE_PROPERTY, -1, true, true, true),
+            new CropConfigEntry(id("caerula_arbor:nethersea_potato_plant"),
+                    id("caerula_arbor:nethersea_potato"), DEFAULT_AGE_PROPERTY, -1, true, true, true),
+            new CropConfigEntry(id("caerula_arbor:nethersea_wheat"),
+                    id("caerula_arbor:nethersea_wheat"), DEFAULT_AGE_PROPERTY, -1, true, true, true),
+            new CropConfigEntry(id("caerula_arbor:tentacle_plant"),
+                    id("caerula_arbor:ocean_peduncle"), DEFAULT_AGE_PROPERTY, -1, true, true, true),
+            new CropConfigEntry(id("caerula_arbor:planted_cell"),
+                    id("caerula_arbor:ocean_cell"), DEFAULT_AGE_PROPERTY, -1, true, true, true),
+            new CropConfigEntry(id("caerula_arbor:planted_fake_egg"),
+                    id("caerula_arbor:fake_egg"), DEFAULT_AGE_PROPERTY, -1, true, true, true));
 
     private static final List<CropConfigEntry> entries = new ArrayList<>();
     private static final Map<ResourceLocation, CropConfigEntry> byBlock = new HashMap<>();
@@ -134,19 +147,7 @@ public final class CropConfig {
     }
 
     private static List<CropConfigEntry> defaultEntries() {
-        return List.of(
-                new CropConfigEntry(id("caerula_arbor:planted_viviparous_lily"),
-                        id("caerula_arbor:planted_viviparous_lily"), DEFAULT_AGE_PROPERTY, -1, true, true, true),
-                new CropConfigEntry(id("caerula_arbor:nethersea_potato_plant"),
-                        id("caerula_arbor:nethersea_potato"), DEFAULT_AGE_PROPERTY, -1, true, true, true),
-                new CropConfigEntry(id("caerula_arbor:nethersea_wheat"),
-                        id("caerula_arbor:nethersea_wheat"), DEFAULT_AGE_PROPERTY, -1, true, true, true),
-                new CropConfigEntry(id("caerula_arbor:tentacle_plant"),
-                        id("caerula_arbor:ocean_peduncle"), DEFAULT_AGE_PROPERTY, -1, true, true, true),
-                new CropConfigEntry(id("caerula_arbor:planted_cell"),
-                        id("caerula_arbor:ocean_cell"), DEFAULT_AGE_PROPERTY, -1, true, true, true),
-                new CropConfigEntry(id("caerula_arbor:planted_fake_egg"),
-                        id("caerula_arbor:fake_egg"), DEFAULT_AGE_PROPERTY, -1, true, true, true));
+        return BUILTIN_DEFAULT_ENTRIES;
     }
 
     private static ResourceLocation id(String value) {
@@ -195,14 +196,26 @@ public final class CropConfig {
 
     public static Item seedFor(Block block) {
         CropConfigEntry entry = entryFor(block);
-        if (entry == null) {
-            return null;
-        }
-        return BuiltInRegistries.ITEM.getOptional(entry.seedId()).orElseGet(() -> {
+        if (entry != null) {
+            Item configured = BuiltInRegistries.ITEM.getOptional(entry.seedId()).orElse(null);
+            if (configured != null) {
+                return configured;
+            }
             warnOnce("seed-" + entry.blockId(),
                     "[Caerula Crop Compat] Configured seed does not exist: " + entry.seedId());
-            return null;
-        });
+        }
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
+        for (CropConfigEntry fallback : BUILTIN_DEFAULT_ENTRIES) {
+            if (fallback.blockId().equals(blockId)) {
+                Item canonical = BuiltInRegistries.ITEM.getOptional(fallback.seedId()).orElse(null);
+                if (canonical == null) {
+                    warnOnce("builtin-seed-" + fallback.blockId(),
+                            "[Caerula Crop Compat] Built-in seed does not exist: " + fallback.seedId());
+                }
+                return canonical;
+            }
+        }
+        return null;
     }
 
     public static void addDataPack(net.minecraftforge.event.AddPackFindersEvent event) {
@@ -236,13 +249,13 @@ public final class CropConfig {
             seedTag.addProperty("replace", false);
             JsonArray seedValues = new JsonArray();
             for (CropConfigEntry entry : entries) {
-                if (!entry.enabled() || !validForTags(entry)) {
+                if (!entry.enabled()) {
                     continue;
                 }
-                if (entry.cropTag()) {
+                if (entry.cropTag() && validBlockForTag(entry)) {
                     blockValues.add(entry.blockId().toString());
                 }
-                if (entry.seedTag()) {
+                if (entry.seedTag() && validSeedForTag(entry)) {
                     seedValues.add(entry.seedId().toString());
                 }
             }
@@ -258,15 +271,10 @@ public final class CropConfig {
         }
     }
 
-    private static boolean validForTags(CropConfigEntry entry) {
+    private static boolean validBlockForTag(CropConfigEntry entry) {
         if (!BuiltInRegistries.BLOCK.containsKey(entry.blockId())) {
             warnOnce("block-" + entry.blockId(),
                     "[Caerula Crop Compat] Skipping entry because block does not exist: " + entry.blockId());
-            return false;
-        }
-        if (!BuiltInRegistries.ITEM.containsKey(entry.seedId())) {
-            warnOnce("item-" + entry.seedId(),
-                    "[Caerula Crop Compat] Skipping entry because seed does not exist: " + entry.seedId());
             return false;
         }
         Block block = BuiltInRegistries.BLOCK.get(entry.blockId());
@@ -274,19 +282,14 @@ public final class CropConfig {
             warnOnce("noncrop-" + entry.blockId(),
                     "[Caerula Crop Compat] Configured crop " + entry.blockId()
                             + " is not a CropBlock and has no transformer support; semantic/tag compatibility was loaded but CropBlock-based automation may not work.");
-            return true;
         }
-        Property<?> property = block.getStateDefinition().getProperty(entry.ageProperty());
-        if (!(property instanceof IntegerProperty age) || !age.getPossibleValues().contains(0)) {
-            warnOnce("invalid-age-" + entry.blockId(),
-                    "[Caerula Crop Compat] Skipping entry because age_property is not a valid IntegerProperty containing 0: "
-                            + entry.blockId() + " -> " + entry.ageProperty());
-            return false;
-        }
-        if (entry.maxAge() >= 0 && !age.getPossibleValues().contains(entry.maxAge())) {
-            warnOnce("invalid-max-" + entry.blockId(),
-                    "[Caerula Crop Compat] Skipping entry because max_age is outside the property range: "
-                            + entry.blockId() + " -> " + entry.maxAge());
+        return true;
+    }
+
+    private static boolean validSeedForTag(CropConfigEntry entry) {
+        if (!BuiltInRegistries.ITEM.containsKey(entry.seedId())) {
+            warnOnce("item-" + entry.seedId(),
+                    "[Caerula Crop Compat] Skipping entry because seed does not exist: " + entry.seedId());
             return false;
         }
         return true;
@@ -365,7 +368,11 @@ public final class CropConfig {
             if (!object.get(name).isJsonPrimitive() || !object.get(name).getAsJsonPrimitive().isNumber()) {
                 throw new IllegalArgumentException(name + " must be an integer");
             }
-            return object.get(name).getAsInt();
+            try {
+                return object.get(name).getAsBigDecimal().intValueExact();
+            } catch (ArithmeticException | NumberFormatException exception) {
+                throw new IllegalArgumentException(name + " must be an integer", exception);
+            }
         }
 
         private static boolean booleanOrDefault(JsonObject object, String name, boolean fallback) {
