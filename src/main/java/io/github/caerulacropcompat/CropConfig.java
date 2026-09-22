@@ -182,13 +182,16 @@ public final class CropConfig {
     public static int maxAgeFor(Block block, IntegerProperty property) {
         CropConfigEntry entry = entryFor(block);
         if (entry != null && entry.maxAge() >= 0) {
-            if (property.getPossibleValues().contains(entry.maxAge())) {
-                return entry.maxAge();
+            Property<?> configuredProperty = block.getStateDefinition().getProperty(entry.ageProperty());
+            if (configuredProperty == property) {
+                if (property.getPossibleValues().contains(entry.maxAge())) {
+                    return entry.maxAge();
+                }
+                warnOnce("max-" + entry.blockId(),
+                        "[Caerula Crop Compat] Configured max_age " + entry.maxAge()
+                                + " is not valid for " + entry.blockId()
+                                + "; deriving the maximum from the age property.");
             }
-            warnOnce("max-" + entry.blockId(),
-                    "[Caerula Crop Compat] Configured max_age " + entry.maxAge()
-                            + " is not valid for " + entry.blockId()
-                            + "; deriving the maximum from the age property.");
         }
         return property.getPossibleValues().stream().mapToInt(Integer::intValue).max()
                 .orElseThrow(() -> new IllegalStateException("Age property has no possible values on " + block));

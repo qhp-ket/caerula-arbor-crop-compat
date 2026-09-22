@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.1
+
+- Keep existing vanilla and other-mod crop/seed tag entries when generating
+  configured tags, and enable the generated configuration datapack by default.
+- Preserve built-in Caerula Arbor seed mappings when entries are disabled,
+  removed, or contain an invalid seed override.
+- Separate crop-tag, seed-tag, age-property, and maximum-age validation so an
+  invalid field does not disable unrelated compatibility.
+- Apply an explicit `max_age` only when the configured age property is valid;
+  otherwise derive the maximum from the native property after fallback.
+- Use Minecraft 1.20.1-compatible registry APIs and stricter JSON validation.
+
 ## 1.1.0
 
 - Move crop block, seed, age-property, maximum-age, tag, and enabled semantics
